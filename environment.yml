@@ -1,0 +1,17 @@
+name: rl
+channels:
+  - defaults
+dependencies:
+  - matplotlib
+  - numpy
+  - jupyterlab
+  - nodejs
+  - jupyter
+  - ipywidgets
+  - tqdm
+  - pytorch
+  - cudatoolkit=10.2
+  - torchvision
+  - gym
+  - pybox2d
+prefix: C:\Users\amacati\.conda\envs\rl
