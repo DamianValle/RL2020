@@ -67,7 +67,7 @@ class Maze:
         actions[self.MOVE_UP]    = (-1,0)
         actions[self.MOVE_DOWN]  = (1,0)
         if minotaur_stay:
-            actions[self.STAY]       = (0, 0)
+            actions[self.STAY]   = (0, 0)
         return actions
 
     def __states(self):
@@ -87,8 +87,7 @@ class Maze:
     def __move(self, state, action):
         """ Makes a step in the maze, given a current position and an action.
             If the action STAY or an inadmissible action is used, the agent stays in place. If the agent was caught 
-            before, it stays in its position. If the agent was caught in this moment, it stays in position and 
-            transitions to "caught".
+            before, it stays in its position.
 
             Returns a list of possible next states (x,y, mino_x, mino_y) of the maze that agent transitions to, as well 
             as an indicator whether the action resulted in a wall hit.
@@ -175,7 +174,6 @@ class Maze:
         return rewards
 
     def simulate_dyn_prog(self, start, policy):
-
         path = list()
         # Deduce the horizon from the policy shape
         horizon = policy.shape[1]
@@ -252,7 +250,6 @@ def dynamic_programming(env, horizon):
         :return numpy.array policy: Optimal time-varying policy at every state,
                                     dimension S*T
     """
-
     # The dynamic prgramming requires the knowledge of :
     # - Transition probabilities
     # - Rewards

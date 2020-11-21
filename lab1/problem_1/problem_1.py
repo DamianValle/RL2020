@@ -31,7 +31,7 @@ def main():
     
     # Demonstrate optimal policy for T = 20 and minotaur stay.
     env = mz.Maze(maze, minotaur_stay=True)
-    V, policy = mz.dynamic_programming(env, 20)
+    _, policy = mz.dynamic_programming(env, 20)
     demo_policy(env, policy)
     
     # Plot survival probability as a function of T.
@@ -41,7 +41,7 @@ def main():
     # Calculate geometric survival rate by solving for infinite MDP with discount factor 29/30.
     gamma = 29/30  # Geometric distribution, 30 on average.
     epsilon = 0.0001
-    V, policy = mz.value_iteration(env, gamma, epsilon)
+    _, policy = mz.value_iteration(env, gamma, epsilon)
     success_cnt = 0
     for _ in range(10000):
         path = env.simulate_val_iter(start, policy)
