@@ -1,7 +1,6 @@
 import numpy as np
 import bank as bk
 import matplotlib.pyplot as plt
-import time
 
 
 def main():
@@ -26,9 +25,9 @@ def main():
     
     # Illustrate the different policies for small and large discount factors.
     _, policy = bk.value_iteration(env, 0.01, epsilon)
-    bk.illustrate_policy(env, policy)
+    bk.illustrate_policy(env, policy, 0.01)
     _, policy = bk.value_iteration(env, 0.99, epsilon)
-    bk.illustrate_policy(env, policy)
+    bk.illustrate_policy(env, policy, 0.99)
     
 
 if __name__ == '__main__':

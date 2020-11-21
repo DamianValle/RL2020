@@ -305,7 +305,7 @@ def draw_bank(bank):
         cell.set_height(1.0/rows)
         cell.set_width(1.0/cols)
         
-def illustrate_policy(env, policy):
+def illustrate_policy(env, policy, gamma=None):
     """!@brief Visualizes the moves of a given policy.
     
     Police always fixed at (1,0). Moves are shown as arrows. 
@@ -324,7 +324,8 @@ def illustrate_policy(env, policy):
 
     # Remove the axis ticks and add title title
     ax = plt.gca()
-    ax.set_title('Policy simulation at time step 0')
+    title_string = f" with gamma = {gamma}" if gamma is not None else ''
+    ax.set_title('Policy simulation at time step 0' + title_string)
     ax.set_xticks([])
     ax.set_yticks([])
 
