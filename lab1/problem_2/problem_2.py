@@ -1,3 +1,10 @@
+"""!@brief Lab 1, Problem 2 of the 2020/2021 Reinforcement Learning lecture at KTH.
+
+@file Problem 2 solution.
+@author Martin Schuck, Damian Valle
+@date 22.11.2020
+"""
+
 import numpy as np
 import bank as bk
 import matplotlib.pyplot as plt

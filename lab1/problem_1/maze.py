@@ -1,3 +1,10 @@
+"""!@brief Lab 1, Problem 1 of the 2020/2021 Reinforcement Learning lecture at KTH.
+
+@file Problem 1 module.
+@author Martin Schuck, Damian Valle
+@date 21.11.2020
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import time
