@@ -44,7 +44,6 @@ def run_training(work_queue, result_queue):
 
         # Training parameters
         Z = 0.9*N_episodes
-        clipping_value = 1
 
         dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
