@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from tqdm import trange
-from Agent import DeepAgent
+from Agent import DeepAgent, AdvantageAgent
 from ReplayBuffer import ExperienceReplayBuffer
 import json
 
@@ -45,21 +45,17 @@ def run_training(work_queue, result_queue):
         # Training parameters
         Z = 0.9*N_episodes
         clipping_value = 1
-        C = L/N                                     # Target update frequency.
 
         dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Random agent, target, buffer and optimizer initialization
-        agent = DeepAgent(dim_state, l1_size, l2_size, n_actions).to(device=dev)
-        target = DeepAgent(dim_state, l1_size, l2_size, n_actions).to(device=dev)
-        target.load_state_dict(agent.state_dict())
-        for param in target.parameters():
-            target.requires_grad = False
+        Q1 = AdvantageAgent(dim_state, l1_size, n_actions).to(device=dev)
+        Q2 = AdvantageAgent(dim_state, l1_size, n_actions).to(device=dev)
         buffer = ExperienceReplayBuffer(maximum_length=L, combine=True)
-        optimizer = optim.Adam(agent.parameters(), lr=alpha)
+        optimizer1 = optim.Adam(Q1.parameters(), lr=alpha)
+        optimizer2 = optim.Adam(Q2.parameters(), lr=alpha)
 
         ### Training process
-        total_steps = 1
         # trange is an alternative to range in python, from the tqdm library
         # It shows a nice progression bar that you can update with useful information
         for i in range(N_episodes):
@@ -70,12 +66,13 @@ def run_training(work_queue, result_queue):
             state = env.reset()
             while not done:
                 # Choose action epsilon greedy with epsilon decay.
-                epsilon = max(epsilon_min, epsilon_max*(epsilon_min/epsilon_max)**((i)/(Z-1)))
+                epsilon = max(epsilon_min, epsilon_max*(epsilon_min/epsilon_max)**((i)/(Z)))
                 if np.random.rand() < epsilon:
                     action = np.random.randint(0, n_actions)
                 else:
-                    action = torch.argmax(agent.forward(torch.tensor([state], requires_grad=False).to(device=dev))).item()
-
+                    actions1 = Q1.forward(torch.tensor([state], requires_grad=False).to(device=dev))
+                    actions2 = Q2.forward(torch.tensor([state], requires_grad=False).to(device=dev))
+                    action = torch.argmax(actions1 + actions2).item()
                 # Get next state and reward.  The done variable
                 # will be True if you reached the goal position,
                 # False otherwise
@@ -85,35 +82,36 @@ def run_training(work_queue, result_queue):
 
                 # Train network.
                 if len(buffer) >= N:
-                    optimizer.zero_grad()
+                    optimizer1.zero_grad()
+                    optimizer2.zero_grad()
                     states, actions, rewards, next_states, dones = buffer.sample_batch(N)
-                    state_values = agent.forward(torch.tensor(states, requires_grad=True,dtype=torch.float32).to(device=dev))
+                    # Double-Q learning.
+                    coin = np.random.rand() <= 0.5
+                    [Q_theta, Q_target] = [Q1, Q2] if coin else [Q2, Q1]
+
+                    state_values = Q_theta.forward(torch.tensor(states,dtype=torch.float32).to(device=dev))
                     q_value = state_values[range(N), actions]
-                    target_max = torch.max(target.forward(torch.tensor(next_states, requires_grad=False).to(device=dev)),1).values
-                    rewards = torch.tensor(rewards,requires_grad=False, dtype=torch.float32).to(device=dev)
-                    dones = 1 - torch.tensor(dones,requires_grad=False, dtype=torch.float32).to(device=dev)
-                    target_values = rewards + discount_factor*target_max*dones
-
-                    print(target.linear1.weight)
-
+                    with torch.no_grad():
+                        opt_actions = torch.max(Q_theta.forward(torch.tensor(next_states, requires_grad=False).to(device=dev)),1).indices
+                        target_max = Q_target.forward(torch.tensor(next_states, requires_grad=False).to(device=dev))[range(N),opt_actions]
+                        rewards = torch.tensor(rewards,requires_grad=False, dtype=torch.float32).to(device=dev)
+                        dones = 1 - torch.tensor(dones,requires_grad=False, dtype=torch.float32).to(device=dev)
+                        target_values = rewards + discount_factor*target_max*dones
                     loss = nn.functional.mse_loss(q_value, target_values)
                     loss.backward()
-                    nn.utils.clip_grad_norm_(agent.parameters(), clipping_value)
-                    optimizer.step()
-
-                # Update target network.
-                if not total_steps%C:
-                    target.load_state_dict(agent.state_dict())
-                    for param in target.parameters():
-                        target.requires_grad = False
-                total_steps += 1
+                    if coin:
+                        nn.utils.clip_grad_norm_(Q1.parameters(), clipping_value)
+                        optimizer1.step()
+                    else:
+                        nn.utils.clip_grad_norm_(Q2.parameters(), clipping_value)
+                        optimizer2.step()
 
                 # Update state for next iteration
                 state = next_state
 
             # Close environment
             env.close()
-        
+        agent = Q1
         env.reset()
         # Parameters
         N_EPISODES = 50            # Number of episodes to run for trainings
@@ -167,7 +165,7 @@ def load_tasks(work_queue):
                     L = int(2e4)  # 2e4
                     N = 100  # 64
                     discount_factor = 0.7
-                    for N_episodes in [200]:
+                    for N_episodes in [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]:
                         for l1_size in [16]:
                             for l2_size in [8]:
                                 work_queue.put([alpha, epsilon_max, epsilon_min, clipping_value, L, N, discount_factor, N_episodes, l1_size, l2_size])
