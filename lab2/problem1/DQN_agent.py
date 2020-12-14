@@ -15,8 +15,6 @@
 
 # Load packages
 import numpy as np
-import torch.nn as nn
-import torch.optim as optim
 
 
 class Agent(object):
@@ -56,17 +54,3 @@ class RandomAgent(Agent):
         '''
         self.last_action = np.random.randint(0, self.n_actions)
         return self.last_action
-
-
-class DeepAgent(nn.Module):
-    
-    def __init__(self, input_size, n_actions):
-        super().__init__()
-        self.linear1 = nn.Linear(input_size,64)
-        self.linear2 = nn.Linear(64,64)
-        self.output = nn.Linear(64,n_actions)
-        
-    def forward(self, state):
-        l1out = nn.functional.relu(self.linear1(state))
-        l2out = nn.functional.relu(self.linear2(l1out))
-        return self.output(l2out)  # No activation function for the output.

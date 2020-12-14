@@ -36,7 +36,6 @@ def run_training(work_queue, result_queue):
         env.reset()
 
         # Parameters
-        N_episodes = 200                             # Number of episodes
         n_actions = env.action_space.n               # Number of available actions
         dim_state = len(env.observation_space.high)  # State dimensionality
 
@@ -60,12 +59,14 @@ def run_training(work_queue, result_queue):
         for i in range(N_episodes):
             if not i%25:
                 print("Thread {} task {} at {:.2f}%".format(os.getpid(), idx, (i)*100/(N_episodes+50)), flush=True)
+
             # Reset enviroment data and initialize variables
             done = False
             state = env.reset()
             while not done:
                 # Choose action epsilon greedy with epsilon decay.
-                epsilon = max(epsilon_min, epsilon_max*(epsilon_min/epsilon_max)**((i)/(Z)))
+                # epsilon = max(epsilon_min, epsilon_max*(epsilon_decay)**(i))
+                epsilon = max(epsilon_min, epsilon_max*(epsilon_min/epsilon_max)**(i/Z))
                 if np.random.rand() < epsilon:
                     action = np.random.randint(0, n_actions)
                 else:
@@ -150,7 +151,9 @@ def run_training(work_queue, result_queue):
 
         avg_reward = np.mean(episode_reward_list)
         confidence = np.std(episode_reward_list) * 1.96 / np.sqrt(N_EPISODES)
-
+        params.append(str(os.getpid())+'_'+str(idx))
+        path = Path(__file__).resolve().parent.joinpath(str(os.getpid())+'_'+str(idx)+ '.pth')
+        torch.save(agent.to('cpu'),path)
         result_queue.put((avg_reward, confidence, params))
     print(f"Thread {os.getpid()} returning from all tasks.", flush=True)
     return
@@ -158,17 +161,17 @@ def run_training(work_queue, result_queue):
 def load_tasks(work_queue):
     x = 0
     for alpha in [1e-3]:
-        for epsilon_max in [0.6]:
-            for epsilon_min in [0.2]:
+        for epsilon_max in [1]:
+            for epsilon_min in [0.01]:
                 for clipping_value in [1.3]:
-                    L = int(2e4)  # 2e4
-                    N = 100  # 64
-                    discount_factor = 0.7
-                    for N_episodes in [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]:
-                        for l1_size in [16]:
-                            for l2_size in [8]:
-                                work_queue.put([alpha, epsilon_max, epsilon_min, clipping_value, L, N, discount_factor, N_episodes, l1_size, l2_size])
-                                x += 1
+                    L = int(3e4)
+                    N = 64
+                    for discount_factor in [0.99]:
+                        for N_episodes in [600, 600, 600, 600, 600, 600]:
+                            for l1_size in [128]:
+                                for l2_size in [8]:
+                                    work_queue.put([alpha, epsilon_max, epsilon_min, clipping_value, L, N, discount_factor, N_episodes, l1_size, l2_size])
+                                    x += 1
     print(f'Loaded {x} tasks.')
 
 def main():
@@ -190,7 +193,7 @@ def main():
         best_param = None
 
     # params = [alpha, epsilon_max, epsilon_min, clipping_value, L, N, discount_factor]
-    for _ in range(8):
+    for _ in range(9):
         p = Process(target=run_training, args=(work_queue, result_queue))
         processes.append(p)
         p.start()

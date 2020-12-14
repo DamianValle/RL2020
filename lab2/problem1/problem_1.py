@@ -51,21 +51,21 @@ env = gym.make('LunarLander-v2')
 env.reset()
 
 # Parameters
-N_episodes = 200                             # Number of episodes
-discount_factor = 0.70                       # Value of the discount factor
+N_episodes = 600                             # Number of episodes
+discount_factor = 0.99                       # Value of the discount factor
 n_ep_running_average = 50                    # Running average of 50 episodes
 n_actions = env.action_space.n               # Number of available actions
 dim_state = len(env.observation_space.high)  # State dimensionality
 
 # Training parameters
 alpha = 1e-3
-epsilon_max = 0.6
-epsilon_min = 0.2
+epsilon_max = 1.
+epsilon_min = 0.01
+epsilon_decay = 0.9
 Z = 0.9*N_episodes
 clipping_value = 1.3
-L = int(2e4)                                # Buffer size
-N = 2                                     # Training batch size
-C = L/N                                     # Target update frequency.
+L = int(3e4)                                # Buffer size
+N = 64                                      # Training batch size
 
 # We will use these variables to compute the average episodic reward and
 # the average number of steps per episode
@@ -75,8 +75,7 @@ episode_number_of_steps = []   # this list contains the number of steps per epis
 dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Random agent, target, buffer and optimizer initialization
-l1_size = 16
-l2_size = 8
+l1_size = 128
 Q1 = AdvantageAgent(dim_state, l1_size, n_actions).to(device=dev)
 Q2 = AdvantageAgent(dim_state, l1_size, n_actions).to(device=dev)
 buffer = ExperienceReplayBuffer(maximum_length=L, combine=True)
@@ -84,7 +83,6 @@ optimizer1 = optim.Adam(Q1.parameters(), lr=alpha)
 optimizer2 = optim.Adam(Q2.parameters(), lr=alpha)
 
 ### Training process
-total_steps = 1
 # trange is an alternative to range in python, from the tqdm library
 # It shows a nice progression bar that you can update with useful information
 EPISODES = trange(N_episodes, desc='Episode: ', leave=True)
@@ -96,13 +94,14 @@ for i in EPISODES:
     t = 0
     while not done:
         # Choose action epsilon greedy with epsilon decay.
-        epsilon = max(epsilon_min, epsilon_max*(epsilon_min/epsilon_max)**((i)/(Z)))
+        epsilon = max(epsilon_min, epsilon_max*(epsilon_min/epsilon_max)**(i/Z))
         if np.random.rand() < epsilon:
             action = np.random.randint(0, n_actions)
         else:
             actions1 = Q1.forward(torch.tensor([state], requires_grad=False).to(device=dev))
             actions2 = Q2.forward(torch.tensor([state], requires_grad=False).to(device=dev))
             action = torch.argmax(actions1 + actions2).item()
+
         # Get next state and reward.  The done variable
         # will be True if you reached the goal position,
         # False otherwise
@@ -138,12 +137,9 @@ for i in EPISODES:
         # Update episode reward
         total_episode_reward += reward
 
-        # Update target network.
-        total_steps += 1
-
         # Update state for next iteration
         state = next_state
-        t+= 1
+        t += 1
 
     # Append episode reward and total number of steps
     episode_reward_list.append(total_episode_reward)
@@ -162,7 +158,7 @@ for i in EPISODES:
         running_average(episode_number_of_steps, n_ep_running_average)[-1]))
 
     # Break in case training goal has been achieved.
-    if i > 50 and running_average(episode_reward_list, n_ep_running_average)[-1] > 50:
+    if i > 50 and running_average(episode_reward_list, n_ep_running_average)[-1] > 200:
         print('Training goal reached!')
         break
 agent = Q1
@@ -192,7 +188,6 @@ if visualize:
 # Save the agent
 path = Path(__file__).resolve().parent
 torch.save(agent.to('cpu'), path.joinpath('neural-network-1.pth'))
-
 
 # Plot Rewards and steps
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16, 9))

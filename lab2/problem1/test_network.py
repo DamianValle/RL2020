@@ -4,7 +4,8 @@ import torch
 from pathlib import Path
 
 dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-agent = torch.load(Path(__file__).resolve().parent.joinpath("neural-network-1.pth")).to(device=dev)
+network_name = '18052_1.pth'  # neural-network-1.pth
+agent = torch.load(Path(__file__).resolve().parent.joinpath("18052_1.pth")).to(device=dev)
 
 env = gym.make('LunarLander-v2')
 done = False
