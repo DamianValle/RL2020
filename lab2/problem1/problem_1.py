@@ -1,25 +1,9 @@
 """!@brief Lab 2, Problem 1 of the 2020/2021 Reinforcement Learning lecture at KTH.
 
-@file Problem 2 main file.
+@file Problem 1 main file.
 @author Martin Schuck, Damian Valle
 @date 10.12.2020
 """
-
-
-# Copyright [2020] [KTH Royal Institute of Technology] Licensed under the
-# Educational Community License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may
-# obtain a copy of the License at http://www.osedu.org/licenses/ECL-2.0
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an "AS IS"
-# BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
-# or implied. See the License for the specific language governing
-# permissions and limitations under the License.
-#
-# Course: EL2805 - Reinforcement Learning - Lab 2 Problem 1
-# Code author: [Alessio Russo - alessior@kth.se]
-# Last update: 6th October 2020, by alessior@kth.se
-#
 
 # Load packages
 import time
@@ -61,7 +45,6 @@ dim_state = len(env.observation_space.high)  # State dimensionality
 alpha = 1e-3
 epsilon_max = 1.
 epsilon_min = 0.01
-epsilon_decay = 0.9
 Z = 0.9*N_episodes
 clipping_value = 1.3
 L = int(3e4)                                # Buffer size

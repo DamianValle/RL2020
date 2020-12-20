@@ -1,12 +1,11 @@
 """!@brief Lab 2, Problem 1 of the 2020/2021 Reinforcement Learning lecture at KTH.
 
-@file Problem 2 agent file.
+@file Problem 1 agent file.
 @author Martin Schuck, Damian Valle
 @date 10.12.2020
 """
 
 import torch.nn as nn
-import torch.optim as optim
 import torch
 
 class DeepAgent(nn.Module):

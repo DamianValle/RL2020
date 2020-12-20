@@ -16,6 +16,7 @@
 # Load packages
 import numpy as np
 
+
 class Agent(object):
     ''' Base agent class
 
@@ -32,7 +33,7 @@ class Agent(object):
         ''' Performs a forward computation '''
         pass
 
-    def backward(self):
+    def backward(self, a):
         ''' Performs a backward pass on the network '''
         pass
 
@@ -40,7 +41,7 @@ class Agent(object):
 class RandomAgent(Agent):
     ''' Agent taking actions uniformly at random, child of the class Agent'''
     def __init__(self, n_actions: int):
-        super(RandomAgent, self).__init__(n_actions)
+        super().__init__(n_actions)
 
     def forward(self, state: np.ndarray) -> np.ndarray:
         ''' Compute a random action in [-1, 1]

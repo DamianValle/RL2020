@@ -1,8 +1,8 @@
-"""!@brief Lab 2, Problem 1 of the 2020/2021 Reinforcement Learning lecture at KTH.
+"""!@brief Lab 2, Problem 2 of the 2020/2021 Reinforcement Learning lecture at KTH.
 
-@file Problem 1 experience replay buffer file.
+@file Problem 2 experience replay buffer file.
 @author Martin Schuck, Damian Valle
-@date 10.12.2020
+@date 14.12.2020
 """
 
 import numpy as np

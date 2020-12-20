@@ -1,6 +1,6 @@
-"""!@brief Lab 2, Problem 1 of the 2020/2021 Reinforcement Learning lecture at KTH.
+"""!@brief Lab 2, Problem 3 of the 2020/2021 Reinforcement Learning lecture at KTH.
 
-@file Problem 1 plots file.
+@file Problem 3 plots file.
 @author Martin Schuck, Damian Valle
 @date 10.12.2020
 """
@@ -13,9 +13,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
+from PPO_agent import RandomAgent
 
 
-def plot_value_function(q_net):
+def plot_value_function(critic):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.set_title('Value Function')
@@ -25,9 +26,9 @@ def plot_value_function(q_net):
     M = np.zeros_like(Y)
     for i in range(M.shape[0]): 
         for j in range(M.shape[1]):
-            state = np.array([0, y[i], 0, 0, w[j], 0, 0, 0])
-            action_values = q_net.forward(torch.tensor([state], dtype=torch.float32))
-            M[j,i] = torch.max(action_values).item()
+            state = torch.tensor([np.array([0, y[i], 0, 0, w[j], 0, 0, 0])], dtype=torch.float32)
+            action_value = critic.forward(state)[0].cpu().detach().numpy()
+            M[j,i] = action_value
     ax.plot_surface(Y, W, M, cmap=cm.coolwarm, linewidth=0, antialiased=False)
     ax.set_xlabel('Height')
     ax.set_ylabel('Lander angle')
@@ -35,18 +36,21 @@ def plot_value_function(q_net):
     ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
     plt.show()
 
-def plot_policy(q_net):
+def plot_policy(actor):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_title('Policy. nothing=0, left=1, main=2, right=3')
+    ax.set_title('Engine direction. Right=1, Nothing=0, Left=-1')
     y = np.linspace(0, 1.5, 300)
     w = np.linspace(-np.pi, np.pi, 300)
     Y, W = np.meshgrid(y, w)
     M = np.zeros_like(Y)
     for i in range(M.shape[0]): 
         for j in range(M.shape[1]):
-            state = np.array([0, y[i], 0, 0, w[j], 0, 0, 0])
-            M[j,i] = torch.argmax(q_net.forward(torch.tensor([state], dtype=torch.float32))).item()
+            state = torch.tensor([np.array([0, y[i], 0, 0, w[j], 0, 0, 0])], dtype=torch.float32)
+            mean, _ = actor.forward(state)
+            mean = mean[0].cpu().detach().numpy()[1]
+            direction = 1 if mean > 0 else -1
+            M[j,i] = direction
     ax.plot_surface(Y, W, M, cmap=cm.coolwarm, linewidth=0, antialiased=False)
     ax.set_xlabel('Height')
     ax.set_ylabel('Lander angle')
@@ -62,7 +66,7 @@ def running_average(x, N):
         y = np.zeros_like(x)
     return y
 
-def plot_agent_rewards(q_net):
+def plot_agent_rewards(actor):
 
     episode_reward_list = run_sim()
 
@@ -77,31 +81,35 @@ def plot_agent_rewards(q_net):
     ax[0].grid(alpha=0.3)
 
 
-    episode_reward_list = run_sim(q_net)
+    episode_reward_list = run_sim(actor)
 
-    ax[1].plot([i for i in range(1, 51)], episode_reward_list, label='DQN Agent episode reward')
+    ax[1].plot([i for i in range(1, 51)], episode_reward_list, label='PPO Agent episode reward')
     ax[1].set_xlabel('Episodes')
     ax[1].set_ylabel('Total number of steps')
     ax[1].set_ylim(-500,400)
-    ax[1].set_title('DQN Agent episode reward')
+    ax[1].set_title('PPO Agent episode reward')
     ax[1].legend()
     ax[1].grid(alpha=0.3)
     plt.show()
 
 def run_sim(agent=None):
-    env = gym.make('LunarLander-v2')
+    env = gym.make('LunarLanderContinuous-v2')
     env.reset()
 
     # Parameters
-    N_episodes = 50                             # Number of episodes
+    N_episodes = 50                              # Number of episodes
     n_ep_running_average = 50                    # Running average of 50 episodes
-    n_actions = env.action_space.n               # Number of available actions
+    n_actions = len(env.action_space.high)       # Action dimension
     dim_state = len(env.observation_space.high)  # State dimensionality
 
     # We will use these variables to compute the average episodic reward and
     # the average number of steps per episode
     episode_reward_list = []       # this list contains the total reward per episode
 
+    if agent is None:
+        actor = RandomAgent(n_actions)
+    else:
+        actor = agent
     for i in range(50):
         # Reset enviroment data and initialize variables
         done = False
@@ -110,13 +118,13 @@ def run_sim(agent=None):
         while not done:
             # Choose action at random.
             if agent is None:
-                action = np.random.randint(0, n_actions)
+                action = actor.forward(state)
             else:
-                action = torch.argmax(agent.forward(torch.tensor([state], requires_grad=False))).item()
+                mean, variance = actor.forward(torch.tensor([state], dtype=torch.float32))
+                mean = mean[0].cpu().detach().numpy()
+                variance = variance[0].cpu().detach().numpy()
+                action = np.clip(np.random.multivariate_normal(mean, np.diag(variance)), -1, 1)
 
-            # Get next state and reward.  The done variable
-            # will be True if you reached the goal position,
-            # False otherwise
             next_state, reward, done, _ = env.step(action)
 
             # Update episode reward
@@ -134,11 +142,12 @@ def run_sim(agent=None):
 
 
 def main():
-    path = Path(__file__).resolve().parent.joinpath('neural-network-1.pth')
-    q_net = torch.load(path)
-    #plot_value_function(q_net)
-    plot_policy(q_net)
-    #plot_agent_rewards(q_net)
+    path = Path(__file__).resolve().parent
+    actor = torch.load(path.joinpath('neural-network-3-actor.pth'))
+    critic = torch.load(path.joinpath('neural-network-3-critic.pth'))
+    plot_value_function(critic)
+    plot_policy(actor)
+    plot_agent_rewards(actor)
 
 if __name__ == '__main__':
     main()
